@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Location {
+  id    Int     @id @default(autoincrement())
+  code  String  @unique
+  name  String
+  type  String
+  stock StockBalance[]
+}
+
+model Product {
+  id    Int     @id @default(autoincrement())
+  sku   String  @unique
+  name  String
+  unit  String
+  stock StockBalance[]
+  transactionLines TransactionLine[]
+  transferLines TransferLine[]
+}
+
+model StockBalance {
+  id           Int     @id @default(autoincrement())
+  product      Product @relation(fields: [productId], references: [id])
+  productId    Int
+  location     Location @relation(fields: [locationId], references: [id])
+  locationId   Int
+  qtyAvailable Float   @default(0)
+  qtyPacking   Float   @default(0)
+  lastUpdated  DateTime @default(now())
+
+  @@unique([productId, locationId])
+}
+
+model Transaction {
+  id        Int      @id @default(autoincrement())
+  type      String
+  location  Location? @relation(fields: [locationId], references: [id])
+  locationId Int?
+  createdAt DateTime @default(now())
+  notes     String?
+  lines     TransactionLine[]
+}
+
+model TransactionLine {
+  id            Int @id @default(autoincrement())
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  transactionId Int
+  product       Product @relation(fields: [productId], references: [id])
+  productId     Int
+  qty           Float
+  unitPrice     Float?
+}
+
+model Transfer {
+  id         Int @id @default(autoincrement())
+  from       Location @relation("FromLoc", fields: [fromId], references: [id])
+  fromId     Int
+  to         Location @relation("ToLoc", fields: [toId], references: [id])
+  toId       Int
+  status     String @default("requested")
+  requestedAt DateTime @default(now())
+  shippedAt  DateTime?
+  receivedAt DateTime?
+  notes      String?
+  lines      TransferLine[]
+}
+
+model TransferLine {
+  id         Int @id @default(autoincrement())
+  transfer   Transfer @relation(fields: [transferId], references: [id])
+  transferId Int
+  product    Product @relation(fields: [productId], references: [id])
+  productId  Int
+  qty        Float
+}
+
+model StockMovement {
+  id         Int @id @default(autoincrement())
+  product    Product @relation(fields: [productId], references: [id])
+  productId  Int
+  location   Location @relation(fields: [locationId], references: [id])
+  locationId Int
+  change     Float
+  reason     String
+  refId      Int?
+  createdAt  DateTime @default(now())
+}
